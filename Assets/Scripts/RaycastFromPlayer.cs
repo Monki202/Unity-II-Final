@@ -34,10 +34,7 @@ public class RaycastFromPlayer : MonoBehaviour
     private AudioSource audioSource;
     public AudioClip wrongBuzzer;
     public AudioClip rightBuzzer;
-    public GameObject Confetti;
-    public GameObject VoiceCompletion;
 
-    public Animator Glados;
 
     //Player Controller
     public FPMovement playerController;
