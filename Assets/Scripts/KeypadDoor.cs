@@ -1,95 +1,121 @@
-
 using UnityEngine;
 using UnityEngine.InputSystem;
-using TMPro;
 
 public class KeypadDoor : MonoBehaviour
 {
-    [Header("Interaction Settings")]
-    public float raycastDistance = 5.0f;
-
     [Header("Keypad Settings")]
-    public Keypad keypad;
+    public string password = "1234";
+    public Animator doorAnimator;
+    public Keypad keypadUI;
 
-    [Header("UI Settings")]
-    public TMP_Text interactionPrompt;
+    [Header("Interaction Settings")]
+    public GameObject interactionPrompt;
 
-    [Header("Player Reference")]
-    public GameObject player;
+    private bool playerNearby = false;
+    private bool keypadActive = false;
+
+    private GameObject player;
+    private KeypadDoor currentKeypad;
+
+    private static KeypadDoor nearestKeypad;
 
     void Start()
     {
-        // Automatically find the player if not assigned
-        if (player == null)
-        {
-            FPMovement movement =
-                GetComponentInParent<FPMovement>();
-
-            if (movement != null)
-                player = movement.gameObject;
-        }
-
-        // Hide interaction prompt at start
         if (interactionPrompt != null)
-            interactionPrompt.text = "";
+            interactionPrompt.SetActive(false);
     }
 
     void Update()
     {
-        // Draw raycast for debugging
-        Debug.DrawRay(
-            transform.position,
-            transform.forward * raycastDistance,
-            Color.green
-        );
+        // Only the closest available keypad responds to E.
+        if (nearestKeypad != this || !playerNearby)
+            return;
 
-        // Clear interaction prompt
-        if (interactionPrompt != null)
-            interactionPrompt.text = "";
+        if (keypadActive)
+            return;
 
-        RaycastHit hit;
-
-        // Check what the player is looking at
-        if (Physics.Raycast(
-            transform.position,
-            transform.forward,
-            out hit,
-            raycastDistance))
+        if (Keyboard.current != null &&
+            Keyboard.current.eKey.wasPressedThisFrame)
         {
-            // Check if object is a keypad
-            if (hit.collider.CompareTag("Keypad"))
-            {
-                // Display interaction prompt
-                if (interactionPrompt != null)
-                    interactionPrompt.text = "Press E to Use Keypad";
-            }
+            Interact();
         }
     }
 
-    // Called when player presses E
-    public void InteractableObject(
-        InputAction.CallbackContext ctx)
+    private void OnTriggerEnter(Collider other)
     {
-        if (!ctx.performed)
+        FPMovement movement =
+            other.GetComponentInParent<FPMovement>();
+
+        if (movement == null)
             return;
 
-        RaycastHit hit;
+        player = movement.gameObject;
+        playerNearby = true;
 
-        // Check if player is looking at keypad
-        if (Physics.Raycast(
-            transform.position,
-            transform.forward,
-            out hit,
-            raycastDistance))
+        nearestKeypad = this;
+
+        if (interactionPrompt != null)
+            interactionPrompt.SetActive(true);
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        FPMovement movement =
+            other.GetComponentInParent<FPMovement>();
+
+        if (movement == null || movement.gameObject != player)
+            return;
+
+        playerNearby = false;
+
+        if (nearestKeypad == this)
+            nearestKeypad = null;
+
+        if (interactionPrompt != null)
+            interactionPrompt.SetActive(false);
+    }
+
+    public void Interact()
+    {
+        if (!playerNearby || keypadActive)
+            return;
+
+        if (keypadUI == null || player == null)
+            return;
+
+        keypadActive = true;
+
+        if (interactionPrompt != null)
+            interactionPrompt.SetActive(false);
+
+        keypadUI.Open(player, password, doorAnimator, this);
+    }
+
+    public void InteractionFinished(bool success)
+    {
+        keypadActive = false;
+
+        if (success)
         {
-            if (hit.collider.CompareTag("Keypad"))
-            {
-                // Open keypad UI
-                if (keypad != null && player != null)
-                {
-                    keypad.Open(player);
-                }
-            }
+            // Prevent the same keypad from being used again.
+            enabled = false;
+
+            if (interactionPrompt != null)
+                interactionPrompt.SetActive(false);
+
+            return;
         }
+
+        if (playerNearby && interactionPrompt != null)
+            interactionPrompt.SetActive(true);
+    }
+
+    private void OnDisable()
+    {
+        if (nearestKeypad == this)
+            nearestKeypad = null;
+
+        if (interactionPrompt != null)
+            interactionPrompt.SetActive(false);
     }
 }

@@ -1,4 +1,3 @@
-
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,18 +8,18 @@ using UnityEngine.InputSystem.UI;
 
 public class Keypad : MonoBehaviour
 {
-    [Header("Keypad Settings")]
-    public string password = "1234";
-    public string enteredpassword = "";
-    public TMP_Text keypadDisplay;
-    public int passDigits;
-
-    [Header("Door Settings")]
-    public Animator doorAnimator;
-
     [Header("UI Settings")]
+    public TMP_Text keypadDisplay;
     public GameObject firstSelectedButton;
+
+    [Header("Settings")]
     public float successDelay = 2f;
+
+    private string password;
+    private string enteredpassword = "";
+
+    private Animator doorAnimator;
+    private KeypadDoor activeKeypad;
 
     private FPMovement movement;
     private MouseLook[] lookScripts;
@@ -31,23 +30,31 @@ public class Keypad : MonoBehaviour
 
     void Awake()
     {
-        passDigits = password.Length;
-        enteredpassword = "";
-
         if (keypadDisplay != null)
             keypadDisplay.text = "Enter Code";
     }
 
-    // Opens the keypad UI
-    public void Open(GameObject player)
+    public void Open(
+        GameObject player,
+        string newPassword,
+        Animator newDoorAnimator,
+        KeypadDoor sourceKeypad)
     {
-        if (completed || isOpen)
+        if (isOpen)
             return;
 
-        gameObject.SetActive(true);
+        password = newPassword;
+        doorAnimator = newDoorAnimator;
+        activeKeypad = sourceKeypad;
+
+        enteredpassword = "";
+        completed = false;
+        checkingCode = false;
 
         movement = player.GetComponent<FPMovement>();
         lookScripts = player.GetComponentsInChildren<MouseLook>();
+
+        gameObject.SetActive(true);
 
         if (movement != null)
         {
@@ -62,12 +69,10 @@ public class Keypad : MonoBehaviour
         }
 
         isOpen = true;
-        checkingCode = false;
 
-        enteredpassword = "";
-        keypadDisplay.text = "Enter Code";
+        if (keypadDisplay != null)
+            keypadDisplay.text = "Enter Code";
 
-        // Enable mouse cursor for clicking UI buttons
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
@@ -84,7 +89,8 @@ public class Keypad : MonoBehaviour
             EventSystem.current.SetSelectedGameObject(null);
 
             if (firstSelectedButton != null)
-                EventSystem.current.SetSelectedGameObject(firstSelectedButton);
+                EventSystem.current.SetSelectedGameObject(
+                    firstSelectedButton);
         }
     }
 
@@ -93,24 +99,15 @@ public class Keypad : MonoBehaviour
         if (!isOpen || checkingCode)
             return;
 
-        // Close keypad with Escape
-        if (EventSystem.current != null)
+        // Close the keypad with Escape.
+        if (Keyboard.current != null &&
+            Keyboard.current.escapeKey.wasPressedThisFrame)
         {
-            var uiInput =
-                EventSystem.current.currentInputModule
-                as InputSystemUIInputModule;
-
-            if (uiInput != null &&
-                uiInput.cancel != null &&
-                uiInput.cancel.action.WasPerformedThisFrame())
-            {
-                Close();
-                return;
-            }
+            Close();
+            return;
         }
 
-        // Automatically check when all digits are entered
-        if (enteredpassword.Length == passDigits)
+        if (enteredpassword.Length == password.Length)
         {
             StartCoroutine(CheckPassword());
         }
@@ -124,44 +121,51 @@ public class Keypad : MonoBehaviour
         {
             completed = true;
 
-            // Display success message
-            keypadDisplay.text = "Success!";
+            if (keypadDisplay != null)
+                keypadDisplay.text = "Success!";
 
-            // Start door opening animation
             if (doorAnimator != null)
-            {
                 doorAnimator.SetTrigger("OpenDoor");
-            }
 
-            // Keep Success! visible for 2 seconds
             yield return new WaitForSeconds(successDelay);
 
             Close();
         }
         else
         {
-            // Incorrect password
-            keypadDisplay.text = "Incorrect Passcode";
+            if (keypadDisplay != null)
+                keypadDisplay.text = "Incorrect Passcode";
 
             yield return new WaitForSeconds(1f);
 
             enteredpassword = "";
-            keypadDisplay.text = "Enter Code";
+
+            if (keypadDisplay != null)
+                keypadDisplay.text = "Enter Code";
 
             checkingCode = false;
         }
     }
 
-    // Close keypad using existing input event
-    public void ShowCursor(InputAction.CallbackContext ctx)
+    public void ButtonNumber(string btnNum)
     {
-        if (ctx.performed && isOpen && !checkingCode)
-            Close();
+        if (!isOpen || checkingCode)
+            return;
+
+        if (enteredpassword.Length >= password.Length)
+            return;
+
+        enteredpassword += btnNum;
+
+        if (keypadDisplay != null)
+            keypadDisplay.text = enteredpassword;
     }
 
-    // Close keypad UI
     public void Close()
     {
+        if (!isOpen)
+            return;
+
         gameObject.SetActive(false);
     }
 
@@ -176,18 +180,15 @@ public class Keypad : MonoBehaviour
         if (EventSystem.current != null)
             EventSystem.current.SetSelectedGameObject(null);
 
-        // Hide and lock mouse cursor
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // Restore player movement
         if (movement != null)
         {
             movement.ResetVerticalVelocity();
             movement.enabled = true;
         }
 
-        // Restore camera movement
         if (lookScripts != null)
         {
             foreach (MouseLook look in lookScripts)
@@ -196,19 +197,11 @@ public class Keypad : MonoBehaviour
                     look.enabled = true;
             }
         }
-    }
 
-    // Called when clicking a keypad number button
-    public void ButtonNumber(string btnNum)
-    {
-        if (!isOpen || checkingCode)
-            return;
-
-        if (enteredpassword.Length >= passDigits)
-            return;
-
-        enteredpassword += btnNum;
-
-        keypadDisplay.text = enteredpassword;
+        if (activeKeypad != null)
+        {
+            activeKeypad.InteractionFinished(completed);
+            activeKeypad = null;
+        }
     }
 }
