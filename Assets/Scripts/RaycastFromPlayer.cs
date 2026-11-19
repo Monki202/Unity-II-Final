@@ -45,7 +45,6 @@ public class RaycastFromPlayer : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        Glados = GameObject.Find("GLaDOS").GetComponent<Animator>();
         playerController = GetComponentInParent<FPMovement>();
         audioSource = GetComponent<AudioSource>();
         pickupHandClosed.enabled = false;
@@ -110,7 +109,7 @@ public class RaycastFromPlayer : MonoBehaviour
                 pickupHandOpen.enabled = true;
             }
 
-            if(canUseDoor && hit.collider.CompareTag("DoorButton"))
+            if (canUseDoor && hit.collider.CompareTag("DoorButton"))
             {
                 hitObj = hit.collider.GetComponent<MeshRenderer>();
                 hitObj.materials[1].SetFloat("_Scale", 1.03f);
@@ -147,13 +146,13 @@ public class RaycastFromPlayer : MonoBehaviour
 
                 if (hit.collider.CompareTag("PickupItem") && hit.collider.gameObject.name != "GreenBox")
                 {
-                        //Close hand when grabbing
-                        pickupHandOpen.enabled = false;
-                        pickupHandClosed.enabled = true;
+                    //Close hand when grabbing
+                    pickupHandOpen.enabled = false;
+                    pickupHandClosed.enabled = true;
 
-                        hit.collider.GetComponent<PickupObj>().Pickup();
-                        heldObj = hit.collider.gameObject;
-                        holdingItem = true;
+                    hit.collider.GetComponent<PickupObj>().Pickup();
+                    heldObj = hit.collider.gameObject;
+                    holdingItem = true;
                 }
 
 
@@ -186,18 +185,15 @@ public class RaycastFromPlayer : MonoBehaviour
 
             if (Physics.Raycast(transform.position, transform.forward, out hit, raycastDistance))
             {
-                
 
-                if(hit.collider.CompareTag("DoorButton"))
+
+                if (hit.collider.CompareTag("DoorButton"))
                 {
                     buttonSound();
                 }
                 if (hit.collider.CompareTag("DoorButton") && doorUnlocked && !buttonPressed)
                 {
                     buttonPressed = true;
-                    Confetti.SetActive(true);
-                    Glados.SetTrigger("Talk");
-                    VoiceCompletion.SetActive(true);
                     leftDoor.SetTrigger("OpenDoor");
                     rightDoor.SetTrigger("OpenDoor");
                 }
@@ -208,7 +204,7 @@ public class RaycastFromPlayer : MonoBehaviour
 
     void buttonSound()
     {
-        if(doorUnlocked)
+        if (doorUnlocked)
         {
             audioSource.PlayOneShot(rightBuzzer);
         }

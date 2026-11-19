@@ -8,8 +8,6 @@ using UnityEngine.InputSystem;
 public class FPMovement : MonoBehaviour
 {
 
-    public Animator animator;
-
     public float speed = 10;
     float h, v;
     public Vector2 MovementInput => new Vector2(h, v);
@@ -40,7 +38,7 @@ public class FPMovement : MonoBehaviour
 
         movement = Vector3.ClampMagnitude(movement, speed);
 
-        if(IsGrounded() && velocity < 0)
+        if (IsGrounded() && velocity < 0)
         {
             velocity = -1;
         }
@@ -56,7 +54,6 @@ public class FPMovement : MonoBehaviour
         movement = transform.TransformDirection(movement);
         controller.Move(movement);
 
-        animator.SetFloat("Speed", MovementInput.magnitude);
 
 
     }
